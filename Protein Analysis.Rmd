@@ -1,0 +1,854 @@
+---
+title: "Proteomics Analysis March 2022"
+author: "Brandon Roy"
+date: "3/15/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# load packages
+
+library(PCAtools)
+library(pcaExplorer)
+library(ggplot2)
+library(DESeq2)
+library(DEP)
+
+# importing necessary data
+
+proteindata <- read.csv("proteinmatrix.csv", row.names=1, header=TRUE) # peptide counts
+metadatamatrix <- read.csv("MetadataMatrix.csv", header=TRUE) # treatment descriptions
+
+proteindata[is.na(proteindata)] <- 0
+proteindata = as.data.frame(proteindata)
+
+metadatamatrix$Treatment <- as.factor(metadatamatrix$Treatment)
+metadatamatrix$Sample.Name <- as.factor(metadatamatrix$Sample.Name)
+metadatamatrix$Days.post.inoculation <- as.factor(metadatamatrix$Days.post.inoculation)
+metadatamatrix$Replicate <- as.factor(metadatamatrix$Replicate)
+metadatamatrix$Group <- as.factor(metadatamatrix$Group)
+```
+
+```{r}
+# DEP Package
+
+# Generate a SummarizedExperiment object using an experimental design
+proteindata2 <- read.csv("proteinmatrix2.csv", header=TRUE, stringsAsFactors=FALSE) # peptide counts
+data_unique <- make_unique(proteindata2, "Gene.name", "Protein.ID", delim = ";")
+
+names<- data_unique[,2]
+get_prefix(names)
+proteindata2$Gene.names %>% duplicated() %>% any()
+
+protein_expdesign <- read.csv("protein_expdesign.csv", header=TRUE, stringsAsFactors = FALSE) # treatment descriptions
+
+LFQ_columns <- grep("LFQ.",colnames(data_unique))
+experimental_design <- protein_expdesign
+data_se <- make_se(data_unique, LFQ_columns, experimental_design)
+
+#SummarizedExperiment object
+data_se
+plot_frequency(data_se)
+
+# Filter for proteins that are identified in all replicates of at least one condition
+data_filt <- filter_missval(data_se, thr = 0)
+plot_numbers(data_filt)
+plot_coverage(data_filt)
+
+# Generate a SummarizedExperiment object by parsing condition information from the column names
+#LFQ_columns <- grep("LFQ.", colnames(data_unique)) # get LFQ column numbers
+#data_se_parsed <- make_se_parse(data_unique, LFQ_columns)
+
+# Normalize the data
+data_norm <- normalize_vsn(data_filt)
+
+
+
+# Plot intensity distributions and cumulative fraction of proteins with and without missing values
+plot_detect(data_filt)
+plot_detect(data_norm)
+
+# Impute missing data 
+data_imp <- impute(data_norm, fun = "MinProb", q = 0.01)
+data_imp_man <- impute(data_norm, fun = "man", shift = 1.8, scale = 0.3)
+data_imp_knn <- impute(data_norm, fun = "knn", rowmax = 0.9)
+data_imp_bpca <- impute(data_norm, fun = "bpca")
+plot_imputation(data_norm, data_imp, data_imp_knn, data_imp_bpca)
+
+plot_normalization(data_filt, data_norm)
+plot_normalization(data_imp_knn, data_imp_bpca)
+plot_missval(data_filt)
+
+# Formula design
+data_diff <- test_diff(data_imp_bpca, type = "all", design_formula = formula(~0 + condition))
+
+dep <- add_rejections(data_diff, alpha =0.05, lfc=log2(1))
+plot_pca(dep, x = 1, y = 2, indicate= c("treatment","time"), n = 500, point_size = 4)
+plot_cor(dep, significant = TRUE, lower = 0, upper = 1, pal = "Purples")
+
+plot_heatmap(dep, type = "centered", kmeans = TRUE, 
+             k = 5, col_limit = 3, show_row_names = FALSE,
+             indicate = c("treatment", "time"))
+
+
+# Test all possible comparisons of samples
+data_diff_all_contrasts <- test_diff(data_imp_bpca, type = "all")
+dep2 <- add_rejections(data_diff_all_contrasts, alpha=0.05,lfc=log2(1))
+data_results <- get_results(dep2)
+proteins_i_want <- data_results %>% filter(significant)
+# 103 proteins were significant across the entire experiment - however this includes inaccurate contrasts...
+
+colnames(data_results)
+
+df_wide <- get_df_wide(dep2)
+
+#save(data_se, data_norm, data_imp, data_diff, data_diff_all_contrasts, dep, dep2, file = "protiendata.RData")
+
+#plot_all(dep2, plots="volcano")
+
+```
+
+```{r}
+#proteindata4_dep <- proteindata2[,c(1:2,3:7,18:22,32:35,46:50,61:65)]
+#proteindata7_dep <- proteindata2[,c(1:2,8:12,23:26,36:40,51:55,66:70)]
+#proteindata12_dep <- proteindata2[,c(1:2,13:17,27:31,41:45,56:60,71:75)]
+
+#outlier removal?
+proteindata4_dep <- proteindata2[,c(1:2,3:7,18:22,32:35,46:50,61:65)] #24 samples
+proteindata7_dep <- proteindata2[,c(1:2,9:12,23:26,37:40,51:55,66:70)] #22 samples
+proteindata12_dep <- proteindata2[,c(1:2,13:17,27:31,42:45,57,59:60,71:75)] #22 samples
+#
+proteindata4 <- proteindata2[,c(1:5,16:20,30:33,44:48,59:63)] #24
+proteindata7 <- proteindata2[,c(6:10,21:24,34:38,49:53,64:68)] #24
+proteindata12 <- proteindata2[,c(11:15,25:29,39:43,54:58,69:73)] #25
+#
+
+data_unique4 <- make_unique(proteindata4_dep, "Gene.name", "Protein.ID", delim = ";")
+data_unique7 <- make_unique(proteindata7_dep, "Gene.name", "Protein.ID", delim = ";")
+data_unique12 <- make_unique(proteindata12_dep, "Gene.name", "Protein.ID", delim = ";")
+
+LFQ_columns_4 <- grep("LFQ.",colnames(data_unique4)) #24
+LFQ_columns_7 <- grep("LFQ.",colnames(data_unique7)) #24
+LFQ_columns_12 <- grep("LFQ.",colnames(data_unique12)) #25
+
+#meta4_u <- metadatamatrix[c(1:5,16:20,30:33,44:48,59:63),] #24
+#meta7_u <- metadatamatrix[c(6:10,21:24,34:38,49:53,64:68),] #24
+#meta12_u <- metadatamatrix[c(11:15,25:29,39:43,54:58,69:73),] #25
+
+#experimental_design4 <- protein_expdesign[c(1:5,16:20,30:33,44:48,59:63),] #24
+#experimental_design7 <- protein_expdesign[c(6:10,21:24,34:38,49:53,64:68),] #24
+#experimental_design12 <- protein_expdesign[c(11:15,25:29,39:43,54:58,69:73),] #25
+##########
+
+# outliers removed from previoius analysis? #######
+meta4_u <- metadatamatrix[c(1:5,16:20,30:33,44:48,59:63),]
+meta7_u <- metadatamatrix[c(7:10,21:24,35:38,49:53,64:68),]
+meta12_u <- metadatamatrix[c(11:15,25:29,40:43,55,57:58,69:73),]
+
+experimental_design4 <- protein_expdesign[c(1:5,16:20,30:33,44:48,59:63),]  #24 samples
+experimental_design7 <- protein_expdesign[c(7:10,21:24,35:38,49:53,64:68),] #22 samples
+experimental_design12 <- protein_expdesign[c(11:15,25:29,40:43,55,57:58,69:73),] #22 samples
+###########
+
+data_se4 <- make_se(data_unique4, LFQ_columns_4, experimental_design4) #24 samples for 4dpi
+data_se7 <- make_se(data_unique7, LFQ_columns_7, experimental_design7) #22 samples for 7dpi
+data_se12 <- make_se(data_unique12, LFQ_columns_12, experimental_design12) #22 samples for 12 dpi
+
+data_filt4 <- filter_missval(data_se4, thr = 0)
+data_filt7 <- filter_missval(data_se7, thr = 0)
+data_filt12 <- filter_missval(data_se12, thr = 0)
+
+data_norm4 <- normalize_vsn(data_filt4)
+data_norm7 <- normalize_vsn(data_filt7)
+data_norm12 <- normalize_vsn(data_filt12)
+
+plot_numbers(data_norm4)
+plot_numbers(data_norm7)
+plot_numbers(data_norm12)
+
+plot_coverage(data_norm4)
+plot_coverage(data_norm7)
+plot_coverage(data_norm12)
+
+data_imp_bpca4 <- impute(data_norm4, fun = "bpca") #2465 proteins
+#plot_imputation(data_norm4,data_imp_bpca4)
+data_imp_bpca7 <- impute(data_norm7, fun = "bpca") #2519 proteins
+data_imp_bpca12 <- impute(data_norm12, fun = "bpca") #2633 proteins
+#plot_imputation(data_norm12, data_imp_knn12)
+
+data_diff4 <- test_diff(data_imp_bpca4, type = "all", design_formula = formula(~0+condition))
+data_diff7 <- test_diff(data_imp_bpca7, type = "all", design_formula = formula(~0+condition))
+data_diff12 <- test_diff(data_imp_bpca12, type = "all", design_formula = formula(~0+condition))
+
+dep4 <- add_rejections(data_diff4, alpha =1, lfc=log2(0))
+plot_pca(dep4, x = 1, y = 2, indicate= "treatment", n = 500, point_size = 4)
+plot_cor(dep4, significant = TRUE, lower = 0, upper = 1, pal = "Purples")
+
+dep7 <- add_rejections(data_diff7, alpha =1, lfc=log2(0))
+plot_pca(dep7, x = 1, y = 2, indicate= "treatment", n = 500, point_size = 4)
+plot_cor(dep7, significant = TRUE, lower = 0, upper = 1, pal = "Purples")
+
+dep12 <- add_rejections(data_diff12, alpha =1, lfc=log2(0))
+plot_pca(dep12, x = 1, y = 2, indicate= "treatment", n = 500, point_size = 4)
+plot_cor(dep12, significant = TRUE, lower = 0, upper = 1, pal = "Purples")
+
+plot_heatmap(dep4, type = "centered", kmeans = TRUE, 
+             k = 5, col_limit = 3, show_row_names = FALSE,
+             indicate = c("treatment", "time"))
+plot_heatmap(dep7, type = "centered", kmeans = TRUE, 
+             k = 5, col_limit = 3, show_row_names = FALSE,
+             indicate = c("treatment", "time"))
+plot_heatmap(dep12, type = "centered", kmeans = TRUE, 
+             k = 5, col_limit = 3, show_row_names = FALSE,
+             indicate = c("treatment", "time"))
+
+```
+
+
+```{r}
+data_diff_all_contrasts4 <- test_diff(data_imp_bpca4, type = "manual", test=c('GHu_WT_04dpi_vs_F13_WT_04dpi', 'GHu_WT_04dpi_vs_GHu_Mutant_04dpi', 'F13_WT_04dpi_vs_F13_Mutant_04dpi', 'F13_WT_04dpi_vs_GHu_Mutant_04dpi', 'GHu_WT_04dpi_vs_F13_Mutant_04dpi'))
+dep4 <- add_rejections(data_diff_all_contrasts4, alpha=0.1,lfc=log2(1))
+data_results4 <- get_results(dep4)
+proteins_i_want4 <- data_results4 %>% filter(significant) #8 proteins (5 duplicates)
+plot_all(dep4, plots="volcano")
+
+data_diff_all_contrasts7 <- test_diff(data_imp_bpca7, type = "manual", test=c('GHu_WT_07dpi_vs_F13_WT_07dpi', 'GHu_WT_07dpi_vs_GHu_Mutant_07dpi', 'F13_WT_07dpi_vs_F13_Mutant_07dpi', 'F13_WT_07dpi_vs_GHu_Mutant_07dpi', 'GHu_WT_07dpi_vs_F13_Mutant_07dpi'))
+dep7 <- add_rejections(data_diff_all_contrasts7, alpha=0.1,lfc=log2(1))
+data_results7 <- get_results(dep7)
+proteins_i_want7 <- data_results7 %>% filter(significant) #19 proteins
+plot_all(dep7, plots="volcano")
+
+data_diff_all_contrasts12 <- test_diff(data_imp_bpca12, type = "manual", test=c('GHu_WT_12dpi_vs_F13_WT_12dpi', 'GHu_WT_12dpi_vs_GHu_Mutant_12dpi', 'F13_WT_12dpi_vs_F13_Mutant_12dpi', 'F13_WT_12dpi_vs_GHu_Mutant_12dpi', 'GHu_WT_12dpi_vs_F13_Mutant_12dpi'))
+dep12 <- add_rejections(data_diff_all_contrasts12,alpha=0.1,lfc=log2(1))
+data_results12 <- get_results(dep12)
+proteins_i_want12 <- data_results12 %>% filter(significant) #22 proteins, 13 duplicates
+plot_all(dep12, plots="volcano")
+
+# 49 proteins across all time points (79 peptide counts)
+
+plot_cond_freq(dep4)
+plot_cond_freq(dep7)
+plot_cond_freq(dep12)
+
+analyze_dep()
+```
+
+```{r}
+
+#proteins at 4dpi
+plot_single(dep4, c('Niben101Scf07812g00013.1', 'Niben101Scf00700g05004.1', 'Niben101Scf05385g04007.1', 'Niben101Scf01478g05007.1','Niben101Scf16508g00001.1'), type='centered', plot=TRUE)
+#proteins at 7dpi
+
+plot_single(dep7, c('Niben101Scf09556g02013.1','Niben101Scf00519g00010.1','Niben101Scf05250g02011.1','Niben101Scf00341g02005.1','Niben101Scf09846g01020.1','Niben101Scf06195g00002.1','Niben101Scf02041g01018.1','Niben101Scf09078g01011.1','Niben101Scf12676g00006.1'), type='centered', plot=TRUE)
+
+plot_single(dep7, c(), type='centered', plot=TRUE)
+
+#plotting genes for 12dpi
+plot_single(dep12, c('Niben101Scf00321g05030.1','Niben101Scf05811g02022.1', 'Niben101Scf01005g01002.1','Niben101Scf05929g06003.1','Niben101Scf04436g13024.1','Niben101Scf01820g00025.1','Niben101Scf06186g03002.1','Niben101Scf01681g02007.1'), type = 'centered',plot=TRUE)
+
+```
+```{r}
+
+dep4
+dep7
+dep12
+
+#plot_volcano(dep, contrast, label_size = 3, add_names = TRUE,
+#adjusted = FALSE, plot = TRUE)
+
+# Create vectors with contasts for DE proteins after summarized experiments were made
+
+data_results4 <- get_results(dep4)
+proteins_i_want4 <- data_results4 %>% filter()
+#plot_all(dep4, plots= "comparison")
+
+##### GHu WT vs Mutant ######
+ghuwtvsghumut4p <- plot_volcano(dep4, "GHu_Mutant_04dpi_vs_GHu_WT_04dpi", add_names=FALSE, adjusted=FALSE, plot=FALSE)
+ghuwtvsghumut4p$pvalue <- ghuwtvsghumut4p$`p_value_-log10`
+ggplot(data=ghuwtvsghumut4p, aes(x=log2_fold_change, y=pvalue)) + geom_point() + theme_minimal()
+with(ghuwtvsghumut4p, plot(log2_fold_change, pvalue, pch=20, main="GHu WT vs GHu Mut (4dpi)", xlim=c(-2,2), ylim=c(0,6)))+
+  with(subset(ghuwtvsghumut4p, pvalue>1.30 ), points(log2_fold_change, pvalue, pch=20, col="light blue"))+
+  with(subset(ghuwtvsghumut4p, abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="gray"))+
+  with(subset(ghuwtvsghumut4p, pvalue>1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="violet"))
+ghuwtvsghumut7p <- plot_volcano(dep7, "GHu_WT_07dpi_vs_GHu_Mutant_07dpi", add_names=FALSE, adjusted=FALSE, plot=FALSE)
+ghuwtvsghumut7p$pvalue <- ghuwtvsghumut7p$`p_value_-log10`
+ggplot(data=ghuwtvsghumut7p, aes(x=log2_fold_change, y=pvalue)) + geom_point() + theme_minimal()
+with(ghuwtvsghumut7p, plot(log2_fold_change, pvalue, pch=20, main="GHu WT vs GHu Mut (7dpi)", xlim=c(-1.5,1.5), ylim=c(0,5)))+
+  with(subset(ghuwtvsghumut7p, pvalue>1.30 ), points(log2_fold_change, pvalue, pch=20, col="light blue"))+
+  with(subset(ghuwtvsghumut7p, abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="gray"))+
+  with(subset(ghuwtvsghumut7p, pvalue>1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="violet"))
+ghuwtvsghumut12p <- plot_volcano(dep12, "GHu_Mutant_12dpi_vs_GHu_WT_12dpi", add_names=FALSE, adjusted=FALSE, plot=FALSE)
+ghuwtvsghumut12p$pvalue <- ghuwtvsghumut12p$`p_value_-log10`
+ggplot(data=ghuwtvsghumut12p, aes(x=log2_fold_change, y=pvalue)) + geom_point() + theme_minimal()
+with(ghuwtvsghumut12p, plot(log2_fold_change, pvalue, pch=20, main="GHu WT vs GHu Mut (12dpi)", xlim=c(-2,2), ylim=c(0,6)))+
+  with(subset(ghuwtvsghumut12p, pvalue>1.30 ), points(log2_fold_change, pvalue, pch=20, col="light blue"))+
+  with(subset(ghuwtvsghumut12p, abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="gray"))+
+  with(subset(ghuwtvsghumut12p, pvalue>1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="violet"))
+
+subset(ghuwtvsf13wt12p, pvalue>1.30 & abs(log2_fold_change)>1)
+```
+
+```{r}
+##### GHu WT vs F13 WT #####
+
+ghuwtvsf13wt4p <- plot_volcano(dep4, "F13_WT_04dpi_vs_GHu_WT_04dpi", add_names=FALSE, adjusted=FALSE, plot=FALSE)
+ghuwtvsf13wt4p$pvalue <- ghuwtvsf13wt4p$`p_value_-log10`
+ggplot(data=ghuwtvsf13wt4p, aes(x=log2_fold_change, y=pvalue)) + 
+    geom_point() + 
+    theme_minimal()
+with(ghuwtvsf13wt4p, plot(log2_fold_change, pvalue, pch=20, main="GHu WT vs F13 WT (4dpi)", xlim=c(-2,2), ylim=c(0,6)))+
+  with(subset(ghuwtvsf13wt4p, pvalue>1.30 ), points(log2_fold_change, pvalue, pch=20, col="light blue"))+
+  with(subset(ghuwtvsf13wt4p, abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="gray"))+
+  with(subset(ghuwtvsf13wt4p, pvalue>1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="violet"))
+ghuwtvsf13wt7p <- plot_volcano(dep7, "F13_WT_07dpi_vs_GHu_WT_07dpi", add_names=FALSE, adjusted=FALSE, plot=FALSE)
+ghuwtvsf13wt7p$pvalue <- ghuwtvsf13wt7p$`p_value_-log10`
+ggplot(data=ghuwtvsf13wt7p, aes(x=log2_fold_change, y=pvalue)) + 
+    geom_point() + 
+    theme_minimal()
+with(ghuwtvsf13wt7p, plot(log2_fold_change, pvalue, pch=20, main="GHu WT vs F13 WT (7dpi)", xlim=c(-2,2), ylim=c(0,6)))+
+  with(subset(ghuwtvsf13wt7p, pvalue>1.30 ), points(log2_fold_change, pvalue, pch=20, col="light blue"))+
+  with(subset(ghuwtvsf13wt7p, abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="gray"))+
+  with(subset(ghuwtvsf13wt7p, pvalue>1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="violet"))
+ghuwtvsf13wt12p <- plot_volcano(dep12, "F13_WT_12dpi_vs_GHu_WT_12dpi", add_names=FALSE, adjusted=FALSE, plot=FALSE)
+ghuwtvsf13wt12p$pvalue <- ghuwtvsf13wt12p$`p_value_-log10`
+ggplot(data=ghuwtvsf13wt12p, aes(x=log2_fold_change, y=pvalue)) + 
+    geom_point() + 
+    theme_minimal()
+with(ghuwtvsf13wt12p, plot(log2_fold_change, pvalue, pch=20, main="GHu WT vs F13 WT (12dpi)", xlim=c(-2,2), ylim=c(0,6)))+
+  with(subset(ghuwtvsf13wt12p, pvalue>1.30 ), points(log2_fold_change, pvalue, pch=20, col="light blue"))+
+  with(subset(ghuwtvsf13wt12p, abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="gray"))+
+  with(subset(ghuwtvsf13wt12p, pvalue>1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="violet"))
+
+```
+
+```{r}
+
+##### F13 WT vs F13 Mutant #####
+
+f13wtvsf13mut4p <- plot_volcano(dep4, "F13_Mutant_04dpi_vs_F13_WT_04dpi", add_names=FALSE, adjusted=FALSE, plot=FALSE)
+f13wtvsf13mut4p$pvalue <- f13wtvsf13mut4p$`p_value_-log10`
+ggplot(data=f13wtvsf13mut4p, aes(x=log2_fold_change, y=pvalue)) + 
+    geom_point() + 
+    theme_minimal()
+with(f13wtvsf13mut4p, plot(log2_fold_change, pvalue, pch=20, main="F13 WT vs F13 Mutant (4dpi)", xlim=c(-2,2), ylim=c(0,6)))+
+  with(subset(f13wtvsf13mut4p, pvalue>1.30 ), points(log2_fold_change, pvalue, pch=20, col="light blue"))+
+  with(subset(f13wtvsf13mut4p, abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="gray"))+
+  with(subset(f13wtvsf13mut4p, pvalue>1.30 & abs(log2_fold_change)<1 & abs(log2_fold_change)>0.5), points(log2_fold_change, pvalue, pch=20, col="pink"))+
+  with(subset(f13wtvsf13mut4p, pvalue>1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="darkorchid4"))
+f13wtvsf13mut7p <- plot_volcano(dep7, "F13_WT_07dpi_vs_GHu_WT_07dpi", add_names=FALSE, adjusted=FALSE, plot=FALSE)
+f13wtvsf13mut7p$pvalue <- f13wtvsf13mut7p$`p_value_-log10`
+ggplot(data=f13wtvsf13mut7p, aes(x=log2_fold_change, y=pvalue)) + 
+    geom_point() + 
+    theme_minimal()
+with(f13wtvsf13mut7p, plot(log2_fold_change, pvalue, pch=20, main="F13 WT vs F13 Mutant (7dpi)", xlim=c(-2,2), ylim=c(0,6)))+
+  with(subset(f13wtvsf13mut7p, pvalue>1.30 ), points(log2_fold_change, pvalue, pch=20, col="light blue"))+
+  with(subset(f13wtvsf13mut7p, abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="gray"))+
+  with(subset(f13wtvsf13mut7p, pvalue>1.30 & abs(log2_fold_change)<1 & abs(log2_fold_change)>0.5), points(log2_fold_change, pvalue, pch=20, col="pink"))+
+  with(subset(f13wtvsf13mut7p, pvalue>1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="darkorchid4"))
+f13wtvsf13mut12p <- plot_volcano(dep12, "F13_WT_12dpi_vs_GHu_WT_12dpi", add_names=FALSE, adjusted=FALSE, plot=FALSE)
+f13wtvsf13mut12p$pvalue <- f13wtvsf13mut12p$`p_value_-log10`
+ggplot(data=f13wtvsf13mut12p, aes(x=log2_fold_change, y=pvalue)) + 
+    geom_point() + 
+    theme_minimal()
+with(f13wtvsf13mut12p, plot(log2_fold_change, pvalue, pch=20, main="F13 WT vs F13 Mutant (12dpi)", xlim=c(-2,2), ylim=c(0,6)))+
+  with(subset(f13wtvsf13mut12p, pvalue>1.30 ), points(log2_fold_change, pvalue, pch=20, col="light blue"))+
+  with(subset(f13wtvsf13mut12p, pvalue<1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="gray"))+
+  with(subset(f13wtvsf13mut12p, pvalue>1.30 & abs(log2_fold_change)<1 & abs(log2_fold_change)>0.5), points(log2_fold_change, pvalue, pch=20, col="pink"))+
+  with(subset(f13wtvsf13mut12p, pvalue>1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="darkorchid4"))
+
+ff4p <- subset(f13wtvsf13mut4p, pvalue>1.30 & abs(log2_fold_change)>1) # 0 genes
+ff7p <- subset(f13wtvsf13mut7p, pvalue>1.30 & abs(log2_fold_change)>1) # 2 genes - actually just 1 and it's 2B protein
+ff12p <- subset(f13wtvsf13mut12p, pvalue>1.30 & abs(log2_fold_change)>1) # 5 genes - but actually just 4
+
+```
+
+
+
+```{r} 
+### GHu WT vs F13 Mutant protein volcano plots
+ghuwtvsf13mut4p <- plot_volcano(dep4, "GHu_WT_04dpi_vs_F13_Mutant_04dpi", add_names=FALSE, adjusted=FALSE, plot=FALSE)
+ghuwtvsf13mut4p$pvalue <- ghuwtvsf13mut4p$`p_value_-log10`
+ggplot(data=ghuwtvsf13mut4p, aes(x=log2_fold_change, y=pvalue)) + geom_point() + theme_minimal()
+with(ghuwtvsf13mut4p, plot(log2_fold_change, pvalue, pch=20, main="GHu WT vs F13 Mut (4dpi)", xlim=c(-3,3), ylim=c(0,10)))+
+  with(subset(ghuwtvsf13mut4p, pvalue>1.30 ), points(log2_fold_change, pvalue, pch=20, col="light blue"))+
+  with(subset(ghuwtvsf13mut4p, abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="gray"))+
+  with(subset(ghuwtvsf13mut4p, pvalue>1.30 & abs(log2_fold_change)<1 & abs(log2_fold_change)>0.5), points(log2_fold_change, pvalue, pch=20, col="pink"))+
+  with(subset(ghuwtvsf13mut4p, pvalue>1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="darkorchid4"))
+ghuwtvsf13mut7p <- plot_volcano(dep7, "GHu_WT_07dpi_vs_F13_Mutant_07dpi", add_names=FALSE, adjusted=FALSE, plot=FALSE)
+ghuwtvsf13mut7p$pvalue <- ghuwtvsf13mut7p$`p_value_-log10`
+ggplot(data=ghuwtvsf13mut7p, aes(x=log2_fold_change, y=pvalue)) + geom_point() + theme_minimal()
+with(ghuwtvsf13mut7p, plot(log2_fold_change, pvalue, pch=20, main="GHu WT vs F13 Mut (7dpi)", xlim=c(-3,3), ylim=c(0,10)))+
+  with(subset(ghuwtvsf13mut7p, pvalue>1.30 ), points(log2_fold_change, pvalue, pch=20, col="light blue"))+
+  with(subset(ghuwtvsf13mut7p, abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="gray"))+
+  with(subset(ghuwtvsf13mut7p, pvalue>1.30 & abs(log2_fold_change)<1 & abs(log2_fold_change)>0.5), points(log2_fold_change, pvalue, pch=20, col="pink"))+
+  with(subset(ghuwtvsf13mut7p, pvalue>1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="darkorchid4"))
+ghuwtvsf13mut12p <- plot_volcano(dep12, "GHu_WT_12dpi_vs_F13_Mutant_12dpi", add_names=FALSE, adjusted=FALSE, plot=FALSE)
+ghuwtvsf13mut12p$pvalue <- ghuwtvsf13mut12p$`p_value_-log10`
+ggplot(data=ghuwtvsf13mut12p, aes(x=log2_fold_change, y=pvalue)) + geom_point() + theme_minimal()
+with(ghuwtvsf13mut12p, plot(log2_fold_change, pvalue, pch=20, main="GHu WT vs F13 Mut (12dpi)", xlim=c(-3,3), ylim=c(0,10)))+
+  with(subset(ghuwtvsf13mut12p, pvalue>1.30 ), points(log2_fold_change, pvalue, pch=20, col="light blue"))+
+  with(subset(ghuwtvsf13mut12p, abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="gray"))+
+  with(subset(ghuwtvsf13mut12p, pvalue>1.30 & abs(log2_fold_change)<1 & abs(log2_fold_change)>0.5), points(log2_fold_change, pvalue, pch=20, col="pink"))+
+  with(subset(ghuwtvsf13mut12p, pvalue>1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="darkorchid4"))
+
+f13wtvsf13mut12p <- plot_volcano(dep12, "F13_Mutant_12dpi_vs_F13_WT_12dpi", add_names=FALSE, adjusted=FALSE, plot=FALSE)
+f13wtvsf13mut12p$pvalue <- f13wtvsf13mut12p$`p_value_-log10`
+
+ggplot(data=f13wtvsf13mut12p, aes(x=log2_fold_change, y=pvalue)) + 
+    geom_point() + 
+    theme_minimal()
+with(f13wtvsf13mut12p, plot(log2_fold_change, pvalue, pch=20, main="F13 WT vs F13 Mut (12dpi)", xlim=c(-3,3), ylim=c(0,10)))+
+  with(subset(f13wtvsf13mut12p, pvalue>1.30 ), points(log2_fold_change, pvalue, pch=20, col="light blue"))+
+  with(subset(f13wtvsf13mut12p, abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="gray"))+
+  with(subset(f13wtvsf13mut12p, pvalue>1.30 & abs(log2_fold_change)>1), points(log2_fold_change, pvalue, pch=20, col="violet"))
+
+
+```
+
+``{r}
+# By individual timepoint
+
+proteindata4 <- proteindata[,c(1:5,16:20,30:33,44:48,59:63)]
+proteindata7 <- proteindata[,c(6:10,21:24,34:38,49:53,64:68)]
+proteindata12 <- proteindata[,c(11:15,25:29,39:43,54:58,69:73)]
+
+meta4 <- metadatamatrix[c(1:5,16:20,30:33,44:48,59:63),]
+meta7 <- metadatamatrix[c(6:10,21:24,34:38,49:53,64:68),]
+meta12 <- metadatamatrix[c(11:15,25:29,39:43,54:58,69:73),]
+
+meta4$Treatment <- as.factor(meta4$Treatment)
+meta7$Treatment <- as.factor(meta7$Treatment)
+meta12$Treatment <- as.factor(meta12$Treatment)
+
+# merge the two matrices for full model
+
+dds_p <- DESeqDataSetFromMatrix(countData = proteindata, colData = metadatamatrix, design = ~ Group)
+dds_p_out <- DESeq(dds_p)
+
+plotDispEsts(dds_p_out)
+
+vsd_p <- (vst(dds_p_out, blind = F, fitType='parametric'))
+cts_p <- assay(vsd_p)
+cts_p <- as.data.frame(t(cts_p))
+datExprP <- as.matrix(cts_p)
+
+ProPCA <- plotPCA(vsd_p, intgroup = c('Treatment','Days.post.inoculation'), returnData=TRUE)
+ggplot(ProPCA, aes(x=PC1,y=PC2,color=Treatment,shape=Days.post.inoculation)) + geom_point(size=3)
+
+plotPCA(vsd_p, intgroup = c('Treatment','Days.post.inoculation'))
+pca_results <- plotPCA(vsd_p, intgroup = c('Treatment','Days.post.inoculation'), ntop=1000, returnData=TRUE)
+ggplot(pca_results, aes(x=PC1,y=PC2,color=Treatment,shape=Days.post.inoculation)) + geom_point(size=3)
+plotPCA(vsd_p, intgroup = 'Treatment', ntop=1000)
+#pcaExplorer(dds=dds_p_out)
+
+resultsNames(dds_p_out)
+
+treatmentcontrast <- data.frame(results(dds_p_out,contrast=c("Group","GHu.WT.7dpi","GHu.Mutant.7dpi")))
+ggplot(data=treatmentcontrast, aes(x=log2FoldChange, y=-log10(pvalue)))+geom_point() + theme_minimal()
+
+```
+``{r}
+summary(results(dds_p_out))
+summary(results(dds_p_out, contrast = c("Group","GHu.WT.7dpi","GHu.Mutant.7dpi"), alpha=0.05), test="Wald")
+
+```
+
+
+``{r}
+# The DEP Package https://bioconductor.org/packages/3.14/bioc/vignettes/DEP/inst/doc/DEP.html
+
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install("DEP")
+library('DEP')
+library(dplyr)
+
+```
+
+``{r}
+# By individual timepoint
+
+proteindata4 <- proteindata[,c(1:5,16:20,30:33,44:48,59:63)]
+proteindata7 <- proteindata[,c(6:10,21:24,34:38,49:53,64:68)]
+proteindata12 <- proteindata[,c(11:15,25:29,39:43,54:58,69:73)]
+
+meta4 <- metadatamatrix[c(1:5,16:20,30:33,44:48,59:63),]
+meta7 <- metadatamatrix[c(6:10,21:24,34:38,49:53,64:68),]
+meta12 <- metadatamatrix[c(11:15,25:29,39:43,54:58,69:73),]
+
+dds_p4 <- DESeqDataSetFromMatrix(countData = proteindata4, colData = meta4, design = ~ Treatment)
+dds_p_out4 <- DESeq(dds_p4)
+dds_p7 <- DESeqDataSetFromMatrix(countData = proteindata7, colData = meta7, design = ~ Treatment)
+dds_p_out7 <- DESeq(dds_p7)
+dds_p12 <- DESeqDataSetFromMatrix(countData = proteindata12, colData = meta12, design = ~ Treatment)
+dds_p_out12 <- DESeq(dds_p12)
+
+vsd_p4 <- vst(dds_p_out4, blind = F, fitType='parametric')
+cts_p4 <- assay(vsd_p4)
+cts_p4 <- as.data.frame(t(cts_p4))
+datExprP4 <- as.matrix(cts_p4)
+ProPCA4 <- plotPCA(vsd_p4, intgroup = "Group", ntop=200)
+ProPCA4
+
+vsd_p7 <- (vst(dds_p_out7, blind = F, fitType='parametric'))
+cts_p7 <- assay(vsd_p7)
+cts_p7 <- as.data.frame(t(cts_p7))
+datExprP7 <- as.matrix(cts_p7)
+ProPCA7 <- plotPCA(vsd_p7, intgroup = "Group", ntop=200)
+ProPCA7
+#pcaExplorer(dds=dds_p4)
+
+vsd_p12 <- (vst(dds_p_out12, blind = F, fitType='parametric'))
+cts_p12 <- assay(vsd_p12)
+cts_p12 <- as.data.frame(t(cts_p12))
+datExprP12 <- as.matrix(cts_p12)
+ProPCA12 <- plotPCA(vsd_p12, intgroup = "Group", ntop=200)
+ProPCA12
+#pcaExplorer(dds=dds_p12)
+
+
+# Removal of outliers
+# 7dpi Control replicate 1, 7dpi F13 WT replicate 1,  12dpi F13WT replicate 1, and 12 dpi GHu mutant replicates 1 and 3 were seen as outliers in pca plots
+# Positions in metadatamatrix are 6, 34, 39, 54 and 56
+
+proteindata4_u <- proteindata[,c(1:5,16:20,30:33,44:48,59:63)]
+proteindata7_u <- proteindata[,c(7:10,21:24,35:38,49:53,64:68)]
+proteindata12_u <- proteindata[,c(11:15,25:29,40:43,55,57:58,69:73)]
+
+meta4_u <- metadatamatrix[c(1:5,16:20,30:33,44:48,59:63),]
+meta7_u <- metadatamatrix[c(7:10,21:24,35:38,49:53,64:68),]
+meta12_u <- metadatamatrix[c(11:15,25:29,40:43,55,57:58,69:73),]
+
+dds_p4 <- DESeqDataSetFromMatrix(countData = proteindata4_u, colData = meta4_u, design = ~ Treatment)
+dds_p_out4 <- DESeq(dds_p4)
+dds_p7 <- DESeqDataSetFromMatrix(countData = proteindata7_u, colData = meta7_u, design = ~ Treatment)
+dds_p_out7 <- DESeq(dds_p7)
+dds_p12 <- DESeqDataSetFromMatrix(countData = proteindata12_u, colData = meta12_u, design = ~ Treatment)
+dds_p_out12 <- DESeq(dds_p12)
+
+plot_frequency(dds_p_out)
+plot_numbers(dds_p_out, by='Sample.name')
+
+# Output for Gene Set Enrichment Analysis (GSEA)
+norm_counts_p <- counts(dds_p_out, normalized = T)
+norm_counts_p <- as.data.frame(norm_counts_p)
+names_p <- rownames(norm_counts_p)
+norm_counts_p$description <- names_p
+norm_counts_p <- norm_counts_p %>% relocate(description, .before = `Control.4dpi.1`)
+write.table(norm_counts_p, "normalized_counts_p.gct", sep = "\t", quote = F, row.names = F)
+print("DONE: file has been exported as 'normalized_counts.gct'.")
+
+```
+
+``{r}
+#Gene exploration
+
+# ADP/ATP Transporter, shows to be downregulated at 7dpi for GHu Mutant when compared to GHu WT 7dpi
+ADPT <- plotCounts(dds_p_out, "Niben101Scf03587g00002.1", intgroup='Group', returnData=TRUE)
+
+ggplot(ADPT, mapping = aes(x=Group,y=count)) + geom_violin(scale="width",adjust = 1,width = 0.5,aes(color=factor(Group)))+ geom_point() 
+
+# MLP protein, related to pathogenesis 10 family 
+MLP <- plotCounts(dds_p_out, "Niben101Scf03893g02007.1 [3]", intgroup='Group', returnData=T)
+ggplot(MLP, mapping = aes(x=Group,y=count)) + geom_violin(scale="width",adjust = 1,width = 0.5,aes(color=factor(Group)))+ geom_point() 
+
+```
+```{r}
+# Hypothesis testing and additional volcano plots
+resultsNames(dds_p_out)
+
+# GHu wild type and mutant
+pghuwtvsmut4 <- data.frame(results(dds_p_out, contrast=c("Group", "GHu.WT.4dpi", "GHu.Mutant.4dpi")))
+pghuwtvsmut7 <- data.frame(results(dds_p_out, contrast=c("Group", "GHu.WT.7dpi", "GHu.Mutant.7dpi")))
+pghuwtvsmut12 <- data.frame(results(dds_p_out, contrast=c("Group", "GHu.WT.12dpi", "GHu.Mutant.12dpi")))
+
+# 4dpi 
+ggplot(data=pghuwtvsmut4, aes(x=log2FoldChange, y=-log10(pvalue), col=pghuwtvsmut4$diffexpressed, label=pghuwtvsmut4$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pghuwtvsmut4, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs GHu Mut (4dpi)", xlim=c(-5,6), ylim=c(0,10)))+
+  with(subset(pghuwtvsmut4, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pghuwtvsmut4, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pghuwtvsmut4, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 7dpi
+ggplot(data=pghuwtvsmut7, aes(x=log2FoldChange, y=-log10(pvalue), col=pghuwtvsmut7$diffexpressed, label=pghuwtvsmut7$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pghuwtvsmut7, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs GHu Mut (7dpi)", xlim=c(-5,6), ylim=c(0,10)))+
+  with(subset(pghuwtvsmut7, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pghuwtvsmut7, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pghuwtvsmut7, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 12dpi
+ggplot(data=pghuwtvsmut12, aes(x=log2FoldChange, y=-log10(pvalue), col=pghuwtvsmut12$diffexpressed, label=pghuwtvsmut12$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pghuwtvsmut12, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs GHu Mut (12dpi)", xlim=c(-5,6), ylim=c(0,10)))+
+  with(subset(pghuwtvsmut12, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pghuwtvsmut12, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pghuwtvsmut12, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+
+# After outlier removal
+
+resultsNames(dds_p_out4)
+
+# GHu wild type and mutant
+pghuwtvsmut4 <- data.frame(results(dds_p_out4, contrast=c("Treatment", "GHu.WT", "GHu.Mutant")))
+pghuwtvsmut7 <- data.frame(results(dds_p_out7, contrast=c("Treatment", "GHu.WT", "GHu.Mutant")))
+pghuwtvsmut12 <- data.frame(results(dds_p_out12, contrast=c("Treatment", "GHu.WT", "GHu.Mutant")))
+
+# 4dpi 
+ggplot(data=pghuwtvsmut4, aes(x=log2FoldChange, y=-log10(pvalue), col=pghuwtvsmut4$diffexpressed, label=pghuwtvsmut4$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pghuwtvsmut4, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs GHu Mut (4dpi)", xlim=c(-5,6), ylim=c(0,8)))+
+  with(subset(pghuwtvsmut4, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pghuwtvsmut4, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pghuwtvsmut4, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 7dpi
+ggplot(data=pghuwtvsmut7, aes(x=log2FoldChange, y=-log10(pvalue), col=pghuwtvsmut7$diffexpressed, label=pghuwtvsmut7$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pghuwtvsmut7, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs GHu Mut (7dpi)", xlim=c(-5,6), ylim=c(0,8)))+
+  with(subset(pghuwtvsmut7, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pghuwtvsmut7, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pghuwtvsmut7, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 12dpi
+ggplot(data=pghuwtvsmut12, aes(x=log2FoldChange, y=-log10(pvalue), col=pghuwtvsmut12$diffexpressed, label=pghuwtvsmut12$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pghuwtvsmut12, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs GHu Mut (12dpi)", xlim=c(-5,6), ylim=c(0,8)))+
+  with(subset(pghuwtvsmut12, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pghuwtvsmut12, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pghuwtvsmut12, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+
+
+
+
+
+```
+
+```{r}
+# F13 wild type and mutant
+pf13wtvsmut4 <- data.frame(results(dds_p_out, contrast=c("Group", "F13.WT.4dpi", "F13.Mutant.4dpi")))
+pf13wtvsmut7 <- data.frame(results(dds_p_out, contrast=c("Group", "F13.WT.7dpi", "F13.Mutant.7dpi")))
+pf13wtvsmut12 <- data.frame(results(dds_p_out, contrast=c("Group", "F13.WT.12dpi", "F13.Mutant.12dpi")))
+
+# 4dpi 
+ggplot(data=pf13wtvsmut4, aes(x=log2FoldChange, y=-log10(pvalue), col=pf13wtvsmut4$diffexpressed, label=pf13wtvsmut4$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pf13wtvsmut4, plot(log2FoldChange, -log10(pvalue), pch=20, main="F13 WT vs F13 Mut (4dpi)", xlim=c(-5,6), ylim=c(0,10)))+
+  with(subset(pf13wtvsmut4, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pf13wtvsmut4, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pf13wtvsmut4, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 7dpi
+ggplot(data=pf13wtvsmut7, aes(x=log2FoldChange, y=-log10(pvalue), col=pf13wtvsmut7$diffexpressed, label=pf13wtvsmut7$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pf13wtvsmut7, plot(log2FoldChange, -log10(pvalue), pch=20, main="F13 WT vs F13 Mut (7dpi)", xlim=c(-5,6), ylim=c(0,10)))+
+  with(subset(pf13wtvsmut7, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pf13wtvsmut7, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pf13wtvsmut7, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 12dpi
+ggplot(data=pf13wtvsmut12, aes(x=log2FoldChange, y=-log10(pvalue), col=pf13wtvsmut12$diffexpressed, label=pf13wtvsmut12$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pf13wtvsmut12, plot(log2FoldChange, -log10(pvalue), pch=20, main="F13 WT vs F13 Mut (12dpi)", xlim=c(-5,6), ylim=c(0,10)))+
+  with(subset(pf13wtvsmut12, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pf13wtvsmut12, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pf13wtvsmut12, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+
+# After outlier removal
+
+pf13wtvsmut4 <- data.frame(results(dds_p_out4, contrast=c("Treatment", "F13.WT", "F13.Mutant")))
+pf13wtvsmut7 <- data.frame(results(dds_p_out7, contrast=c("Treatment", "F13.WT", "F13.Mutant")))
+pf13wtvsmut12 <- data.frame(results(dds_p_out12, contrast=c("Treatment", "F13.WT", "F13.Mutant")))
+
+# 4dpi 
+ggplot(data=pf13wtvsmut4, aes(x=log2FoldChange, y=-log10(pvalue), col=pf13wtvsmut4$diffexpressed, label=pf13wtvsmut4$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pf13wtvsmut4, plot(log2FoldChange, -log10(pvalue), pch=20, main="F13 WT vs F13 Mut (4dpi)", xlim=c(-5,6), ylim=c(0,8)))+
+  with(subset(pf13wtvsmut4, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pf13wtvsmut4, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pf13wtvsmut4, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 7dpi
+ggplot(data=pf13wtvsmut7, aes(x=log2FoldChange, y=-log10(pvalue), col=pf13wtvsmut7$diffexpressed, label=pf13wtvsmut7$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pf13wtvsmut7, plot(log2FoldChange, -log10(pvalue), pch=20, main="F13 WT vs F13 Mut (7dpi)", xlim=c(-5,6), ylim=c(0,8)))+
+  with(subset(pf13wtvsmut7, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pf13wtvsmut7, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pf13wtvsmut7, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 12dpi
+ggplot(data=pf13wtvsmut12, aes(x=log2FoldChange, y=-log10(pvalue), col=pf13wtvsmut12$diffexpressed, label=pf13wtvsmut12$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pf13wtvsmut12, plot(log2FoldChange, -log10(pvalue), pch=20, main="F13 WT vs F13 Mut (12dpi)", xlim=c(-5,6), ylim=c(0,8)))+
+  with(subset(pf13wtvsmut12, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pf13wtvsmut12, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pf13wtvsmut12, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+
+
+```
+```{r}
+
+# GHu WT vs F13 WT 
+
+```
+
+pghuwtvsf13wt4 <- data.frame(results(dds_p_out, contrast=c("Group", "GHu.WT.4dpi","F13.WT.4dpi")))
+pghuwtvsf13wt7 <- data.frame(results(dds_p_out, contrast=c("Group", "GHu.WT.7dpi","F13.WT.7dpi")))
+pghuwtvsf13wt12 <- data.frame(results(dds_p_out, contrast=c("Group", "GHu.WT.12dpi","F13.WT.12dpi")))
+
+# 4dpi 
+ggplot(data=pghuwtvsf13wt4, aes(x=log2FoldChange, y=-log10(pvalue), col=pghuwtvsf13wt4$diffexpressed, label=pghuwtvsf13wt4$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pghuwtvsf13wt4, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs F13 WT (4dpi)", xlim=c(-5,6), ylim=c(0,10)))+
+  with(subset(pghuwtvsf13wt4, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pghuwtvsf13wt4, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pghuwtvsf13wt4, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+#7dpi
+ggplot(data=pghuwtvsf13wt7, aes(x=log2FoldChange, y=-log10(pvalue), col=pghuwtvsf13wt7$diffexpressed, label=pghuwtvsf13wt7$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pghuwtvsf13wt7, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs F13 WT (7dpi)", xlim=c(-5,6), ylim=c(0,10)))+
+  with(subset(pghuwtvsf13wt7, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pghuwtvsf13wt7, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pghuwtvsf13wt7, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 12dpi
+ggplot(data=pghuwtvsf13wt12, aes(x=log2FoldChange, y=-log10(pvalue), col=pghuwtvsf13wt12$diffexpressed, label=pghuwtvsf13wt12$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pghuwtvsf13wt12, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs F13 WT (12dpi)", xlim=c(-5,6), ylim=c(0,10)))+
+  with(subset(pghuwtvsf13wt12, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pghuwtvsf13wt12, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pghuwtvsf13wt12, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+```{r}
+# GHu WT vs F13 WT 
+# After removal of outliers
+
+pghuwtvsf13wt4 <- data.frame(results(dds_p_out4, contrast=c("Treatment", "GHu.WT","F13.WT")))
+pghuwtvsf13wt7 <- data.frame(results(dds_p_out7, contrast=c("Treatment", "GHu.WT","F13.WT")))
+pghuwtvsf13wt12 <- data.frame(results(dds_p_out12, contrast=c("Treatment", "GHu.WT","F13.WT")))
+
+# 4dpi 
+ggplot(data=pghuwtvsf13wt4, aes(x=log2FoldChange, y=-log10(pvalue), col=pghuwtvsf13wt4$diffexpressed, label=pghuwtvsf13wt4$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pghuwtvsf13wt4, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs F13 WT (4dpi)", xlim=c(-5,6), ylim=c(0,8)))+
+  with(subset(pghuwtvsf13wt4, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pghuwtvsf13wt4, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pghuwtvsf13wt4, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 7dpi
+ggplot(data=pghuwtvsf13wt7, aes(x=log2FoldChange, y=-log10(pvalue), col=pghuwtvsf13wt7$diffexpressed, label=pghuwtvsf13wt7$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pghuwtvsf13wt7, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs F13 WT (7dpi)", xlim=c(-5,6), ylim=c(0,8)))+
+  with(subset(pghuwtvsf13wt7, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pghuwtvsf13wt7, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pghuwtvsf13wt7, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 12dpi
+ggplot(data=pghuwtvsf13wt12, aes(x=log2FoldChange, y=-log10(pvalue), col=pghuwtvsf13wt12$diffexpressed, label=pghuwtvsf13wt12$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(pghuwtvsf13wt12, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs F13 WT (12dpi)", xlim=c(-5,6), ylim=c(0,8)))+
+  with(subset(pghuwtvsf13wt12, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(pghuwtvsf13wt12, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(pghuwtvsf13wt12, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+
+```
+
+```{r}
+
+# GHu wild type and mutant 
+
+# 4dpi 
+ggplot(data=ghuwtvsmut4, aes(x=log2FoldChange, y=-log10(padj), col=ghuwtvsmut4$diffexpressed, label=ghuwtvsmut4$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(ghuwtvsmut4, plot(log2FoldChange, -log10(padj), pch=20, main="GHu WT vs GHu Mut (4dpi)", xlim=c(-5,6), ylim=c(0,30)))+
+  with(subset(ghuwtvsmut4, padj<.05 ), points(log2FoldChange, -log10(padj), pch=20, col="light blue"))+
+  with(subset(ghuwtvsmut4, abs(log2FoldChange)>1), points(log2FoldChange, -log10(padj), pch=20, col="gray"))+
+  with(subset(ghuwtvsmut4, padj<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(padj), pch=20, col="light green")) 
+# 7dpi
+ggplot(data=ghuwtvsmut7, aes(x=log2FoldChange, y=-log10(padj), col=ghuwtvsmut7$diffexpressed, label=ghuwtvsmut7$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(ghuwtvsmut7, plot(log2FoldChange, -log10(padj), pch=20, main="GHu WT vs GHu Mut (7dpi)", xlim=c(-5,6), ylim=c(0,40)))+
+  with(subset(ghuwtvsmut7, padj<.05 ), points(log2FoldChange, -log10(padj), pch=20, col="light blue"))+
+  with(subset(ghuwtvsmut7, abs(log2FoldChange)>1), points(log2FoldChange, -log10(padj), pch=20, col="gray"))+
+  with(subset(ghuwtvsmut7, padj<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(padj), pch=20, col="light green")) 
+# 12dpi
+ggplot(data=ghuwtvsmut12, aes(x=log2FoldChange, y=-log10(padj), col=ghuwtvsmut12$diffexpressed, label=ghuwtvsmut12$delabel)) + 
+    geom_point() + 
+    theme_minimal()
+with(ghuwtvsmut12, plot(log2FoldChange, -log10(padj), pch=20, main="GHu WT vs GHu Mut (12dpi)", xlim=c(-5,6), ylim=c(0,10)))+
+  with(subset(ghuwtvsmut12, padj<.05 ), points(log2FoldChange, -log10(padj), pch=20, col="light blue"))+
+  with(subset(ghuwtvsmut12, abs(log2FoldChange)>1), points(log2FoldChange, -log10(padj), pch=20, col="gray"))+
+  with(subset(ghuwtvsmut12, padj<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(padj), pch=20, col="light green")) 
+
+```
+
+
+```{r}
+#GHu WT vs F13 Mut
+
+resultsNames(dds_p_out4)
+ghuwtvsf13mut4 <- data.frame(results(dds_p_out4, contrast=c("Treatment","GHu.WT","F13.Mutant")))
+ghuwtvsf13mut7 <- data.frame(results(dds_p_out7, contrast=c("Treatment", "GHu.WT","F13.Mutant")))
+ghuwtvsf13mut12 <- data.frame(results(dds_p_out12, contrast=c("Treatment", "GHu.WT","F13.Mutant")))
+
+# 4dpi 
+with(ghuwtvsf13mut4, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs F13 Mut (4dpi)", xlim=c(-7,6), ylim=c(0,6)))+
+  with(subset(ghuwtvsf13mut4, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(ghuwtvsf13mut4, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(ghuwtvsf13mut4, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 7dpi
+with(ghuwtvsf13mut7, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs F13 Mut (7dpi)", xlim=c(-7,6), ylim=c(0,6)))+
+  with(subset(ghuwtvsf13mut7, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(ghuwtvsf13mut7, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(ghuwtvsf13mut7, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 12dpi
+with(ghuwtvsf13mut12, plot(log2FoldChange, -log10(pvalue), pch=20, main="GHu WT vs F13 Mut (12dpi)", xlim=c(-7,6), ylim=c(0,6)))+
+  with(subset(ghuwtvsf13mut12, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(ghuwtvsf13mut12, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(ghuwtvsf13mut12, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+```
+
+```{r}
+
+f13mutvsghuwt4 <- data.frame(results(dds_p_out4, contrast=c("Treatment","F13.WT","GHu.Mutant")))
+f13mutvsghuwt7 <- data.frame(results(dds_p_out7, contrast=c("Treatment", "F13.WT","GHu.Mutant")))
+f13mutvsghuwt12 <- data.frame(results(dds_p_out12, contrast=c("Treatment", "F13.WT","GHu.Mutant")))
+
+# 4dpi 
+with(f13mutvsghuwt4, plot(log2FoldChange, -log10(pvalue), pch=20, main="F13 WT vs GHu Mut (4dpi)", xlim=c(-7,6), ylim=c(0,6)))+
+  with(subset(f13mutvsghuwt4, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(f13mutvsghuwt4, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(f13mutvsghuwt4, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 7dpi
+with(f13mutvsghuwt7, plot(log2FoldChange, -log10(pvalue), pch=20, main="F13 WT vs GHu Mut (7dpi)", xlim=c(-7,6), ylim=c(0,6)))+
+  with(subset(f13mutvsghuwt7, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(f13mutvsghuwt7, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(f13mutvsghuwt7, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+# 12dpi
+with(f13mutvsghuwt12, plot(log2FoldChange, -log10(pvalue), pch=20, main="F13 WT vs GHu Mut (12dpi)", xlim=c(-7,6), ylim=c(0,6)))+
+  with(subset(f13mutvsghuwt12, pvalue<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="light blue"))+
+  with(subset(f13mutvsghuwt12, abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="gray"))+
+  with(subset(f13mutvsghuwt12, pvalue<.05 & abs(log2FoldChange)>1), points(log2FoldChange, -log10(pvalue), pch=20, col="violet")) 
+
+```
+
+
+
+
+```{r}
+
+#get_df_long(dep12)
+counts <- get_df_wide(dep12)
+
+
+
+```

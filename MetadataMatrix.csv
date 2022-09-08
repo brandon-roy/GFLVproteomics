@@ -1,0 +1,74 @@
+Sample Name,Treatment,Days post inoculation,Replicate,Group
+Control 4dpi 1,Control,4,1,Control 4dpi
+Control 4dpi 2,Control,4,2,Control 4dpi
+Control 4dpi 3,Control,4,3,Control 4dpi
+Control 4dpi 4,Control,4,4,Control 4dpi
+Control 4dpi 5,Control,4,5,Control 4dpi
+Control 7dpi 1,Control,7,1,Control 7dpi
+Control 7dpi 2,Control,7,2,Control 7dpi
+Control 7dpi 3,Control,7,3,Control 7dpi
+Control 7dpi 4,Control,7,4,Control 7dpi
+Control 7dpi 5,Control,7,5,Control 7dpi
+Control 12dpi 1,Control,12,1,Control 12dpi
+Control 12dpi 2,Control,12,2,Control 12dpi
+Control 12dpi 3,Control,12,3,Control 12dpi
+Control 12dpi 4,Control,12,4,Control 12dpi
+Control 12dpi 5,Control,12,5,Control 12dpi
+F13 Mut 4dpi 1,F13 Mutant,4,1,F13 Mutant 4dpi
+F13 Mut 4dpi 2,F13 Mutant,4,2,F13 Mutant 4dpi
+F13 Mut 4dpi 3,F13 Mutant,4,3,F13 Mutant 4dpi
+F13 Mut 4dpi 4,F13 Mutant,4,4,F13 Mutant 4dpi
+F13 Mut 4dpi 5,F13 Mutant,4,5,F13 Mutant 4dpi
+F13 Mut 7dpi 2,F13 Mutant,7,2,F13 Mutant 7dpi
+F13 Mut 7dpi 3,F13 Mutant,7,3,F13 Mutant 7dpi
+F13 Mut 7dpi 4,F13 Mutant,7,4,F13 Mutant 7dpi
+F13 Mut 7dpi 5,F13 Mutant,7,5,F13 Mutant 7dpi
+F13 Mut 12dpi 1,F13 Mutant,12,1,F13 Mutant 12dpi
+F13 Mut 12dpi 2,F13 Mutant,12,2,F13 Mutant 12dpi
+F13 Mut 12dpi 3,F13 Mutant,12,3,F13 Mutant 12dpi
+F13 Mut 12dpi 4,F13 Mutant,12,4,F13 Mutant 12dpi
+F13 Mut 12dpi 5,F13 Mutant,12,5,F13 Mutant 12dpi
+F13 WT 4dpi 1,F13 WT,4,1,F13 WT 4dpi
+F13 WT 4dpi 2,F13 WT,4,2,F13 WT 4dpi
+F13 WT 4dpi 3,F13 WT,4,3,F13 WT 4dpi
+F13 WT 4dpi 4,F13 WT,4,4,F13 WT 4dpi
+F13 WT 7dpi 1,F13 WT,7,1,F13 WT 7dpi
+F13 WT 7dpi 2,F13 WT,7,2,F13 WT 7dpi
+F13 WT 7dpi 3,F13 WT,7,3,F13 WT 7dpi
+F13 WT 7dpi 4,F13 WT,7,4,F13 WT 7dpi
+F13 WT 7dpi 5,F13 WT,7,5,F13 WT 7dpi
+F13 WT 12dpi 1,F13 WT,12,1,F13 WT 12dpi
+F13 WT 12dpi 2,F13 WT,12,2,F13 WT 12dpi
+F13 WT 12dpi 3,F13 WT,12,3,F13 WT 12dpi
+F13 WT 12dpi 4,F13 WT,12,4,F13 WT 12dpi
+F13 WT 12dpi 5,F13 WT,12,5,F13 WT 12dpi
+GHu Mut 4dpi 1,GHu Mutant,4,1,GHu Mutant 4dpi
+GHu Mut 4dpi 2,GHu Mutant,4,2,GHu Mutant 4dpi
+GHu Mut 4dpi 3,GHu Mutant,4,3,GHu Mutant 4dpi
+GHu Mut 4dpi 4,GHu Mutant,4,4,GHu Mutant 4dpi
+GHu Mut 4dpi 5,GHu Mutant,4,5,GHu Mutant 4dpi
+GHu Mut 7dpi 1,GHu Mutant,7,1,GHu Mutant 7dpi
+GHu Mut 7dpi 2,GHu Mutant,7,2,GHu Mutant 7dpi
+GHu Mut 7dpi 3,GHu Mutant,7,3,GHu Mutant 7dpi
+GHu Mut 7dpi 4,GHu Mutant,7,4,GHu Mutant 7dpi
+GHu Mut 7dpi 5,GHu Mutant,7,5,GHu Mutant 7dpi
+GHu Mut 12dpi 1,GHu Mutant,12,1,GHu Mutant 12dpi
+GHu Mut 12dpi 2,GHu Mutant,12,2,GHu Mutant 12dpi
+GHu Mut 12dpi 3,GHu Mutant,12,3,GHu Mutant 12dpi
+GHu Mut 12dpi 4,GHu Mutant,12,4,GHu Mutant 12dpi
+GHu Mut 12dpi 5,GHu Mutant,12,5,GHu Mutant 12dpi
+GHu WT 4dpi 1,GHu WT,4,1,GHu WT 4dpi
+GHu WT 4dpi 2,GHu WT,4,2,GHu WT 4dpi
+GHu WT 4dpi 3,GHu WT,4,3,GHu WT 4dpi
+GHu WT 4dpi 4,GHu WT,4,4,GHu WT 4dpi
+GHu WT 4dpi 5,GHu WT,4,5,GHu WT 4dpi
+GHu WT 7dpi 1,GHu WT,7,1,GHu WT 7dpi
+GHu WT 7dpi 2,GHu WT,7,2,GHu WT 7dpi
+GHu WT 7dpi 3,GHu WT,7,3,GHu WT 7dpi
+GHu WT 7dpi 4,GHu WT,7,4,GHu WT 7dpi
+GHu WT 7dpi 5,GHu WT,7,5,GHu WT 7dpi
+GHu WT 12dpi 1,GHu WT,12,1,GHu WT 12dpi
+GHu WT 12dpi 2,GHu WT,12,2,GHu WT 12dpi
+GHu WT 12dpi 3,GHu WT,12,3,GHu WT 12dpi
+GHu WT 12dpi 4,GHu WT,12,4,GHu WT 12dpi
+GHu WT 12dpi 5,GHu WT,12,5,GHu WT 12dpi

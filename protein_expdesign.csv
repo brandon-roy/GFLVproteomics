@@ -1,0 +1,74 @@
+﻿label,condition,replicate,time,group,treatment
+Control_04dpi_1,Control_04dpi,1,4,Control 04dpi,Control
+Control_04dpi_2,Control_04dpi,2,4,Control 04dpi,Control
+Control_04dpi_3,Control_04dpi,3,4,Control 04dpi,Control
+Control_04dpi_4,Control_04dpi,4,4,Control 04dpi,Control
+Control_04dpi_5,Control_04dpi,5,4,Control 04dpi,Control
+Control_07dpi_1,Control_07dpi,1,7,Control 07dpi,Control
+Control_07dpi_2,Control_07dpi,2,7,Control 07dpi,Control
+Control_07dpi_3,Control_07dpi,3,7,Control 07dpi,Control
+Control_07dpi_4,Control_07dpi,4,7,Control 07dpi,Control
+Control_07dpi_5,Control_07dpi,5,7,Control 07dpi,Control
+Control_12dpi_1,Control_12dpi,1,12,Control 12dpi,Control
+Control_12dpi_2,Control_12dpi,2,12,Control 12dpi,Control
+Control_12dpi_3,Control_12dpi,3,12,Control 12dpi,Control
+Control_12dpi_4,Control_12dpi,4,12,Control 12dpi,Control
+Control_12dpi_5,Control_12dpi,5,12,Control 12dpi,Control
+F13_Mut_04dpi_1,F13_Mutant_04dpi,1,4,F13 Mutant 04dpi,F13 Mutant
+F13_Mut_04dpi_2,F13_Mutant_04dpi,2,4,F13 Mutant 04dpi,F13 Mutant
+F13_Mut_04dpi_3,F13_Mutant_04dpi,3,4,F13 Mutant 04dpi,F13 Mutant
+F13_Mut_04dpi_4,F13_Mutant_04dpi,4,4,F13 Mutant 04dpi,F13 Mutant
+F13_Mut_04dpi_5,F13_Mutant_04dpi,5,4,F13 Mutant 04dpi,F13 Mutant
+F13_Mut_07dpi_2,F13_Mutant_07dpi,2,7,F13 Mutant 07dpi,F13 Mutant
+F13_Mut_07dpi_3,F13_Mutant_07dpi,3,7,F13 Mutant 07dpi,F13 Mutant
+F13_Mut_07dpi_4,F13_Mutant_07dpi,4,7,F13 Mutant 07dpi,F13 Mutant
+F13_Mut_07dpi_5,F13_Mutant_07dpi,5,7,F13 Mutant 07dpi,F13 Mutant
+F13_Mut_12dpi_1,F13_Mutant_12dpi,1,12,F13 Mutant 12dpi,F13 Mutant
+F13_Mut_12dpi_2,F13_Mutant_12dpi,2,12,F13 Mutant 12dpi,F13 Mutant
+F13_Mut_12dpi_3,F13_Mutant_12dpi,3,12,F13 Mutant 12dpi,F13 Mutant
+F13_Mut_12dpi_4,F13_Mutant_12dpi,4,12,F13 Mutant 12dpi,F13 Mutant
+F13_Mut_12dpi_5,F13_Mutant_12dpi,5,12,F13 Mutant 12dpi,F13 Mutant
+F13_WT_04dpi_1,F13_WT_04dpi,1,4,F13 WT 04dpi,F13 WT
+F13_WT_04dpi_2,F13_WT_04dpi,2,4,F13 WT 04dpi,F13 WT
+F13_WT_04dpi_3,F13_WT_04dpi,3,4,F13 WT 04dpi,F13 WT
+F13_WT_04dpi_4,F13_WT_04dpi,4,4,F13 WT 04dpi,F13 WT
+F13_WT_07dpi_1,F13_WT_07dpi,1,7,F13 WT 07dpi,F13 WT
+F13_WT_07dpi_2,F13_WT_07dpi,2,7,F13 WT 07dpi,F13 WT
+F13_WT_07dpi_3,F13_WT_07dpi,3,7,F13 WT 07dpi,F13 WT
+F13_WT_07dpi_4,F13_WT_07dpi,4,7,F13 WT 07dpi,F13 WT
+F13_WT_07dpi_5,F13_WT_07dpi,5,7,F13 WT 07dpi,F13 WT
+F13_WT_12dpi_1,F13_WT_12dpi,1,12,F13 WT 12dpi,F13 WT
+F13_WT_12dpi_2,F13_WT_12dpi,2,12,F13 WT 12dpi,F13 WT
+F13_WT_12dpi_3,F13_WT_12dpi,3,12,F13 WT 12dpi,F13 WT
+F13_WT_12dpi_4,F13_WT_12dpi,4,12,F13 WT 12dpi,F13 WT
+F13_WT_12dpi_5,F13_WT_12dpi,5,12,F13 WT 12dpi,F13 WT
+GHu_Mut_04dpi_1,GHu_Mutant_04dpi,1,4,GHu Mutant 04dpi,GHu Mutant
+GHu_Mut_04dpi_2,GHu_Mutant_04dpi,2,4,GHu Mutant 04dpi,GHu Mutant
+GHu_Mut_04dpi_3,GHu_Mutant_04dpi,3,4,GHu Mutant 04dpi,GHu Mutant
+GHu_Mut_04dpi_4,GHu_Mutant_04dpi,4,4,GHu Mutant 04dpi,GHu Mutant
+GHu_Mut_04dpi_5,GHu_Mutant_04dpi,5,4,GHu Mutant 04dpi,GHu Mutant
+GHu_Mut_07dpi_1,GHu_Mutant_07dpi,1,7,GHu Mutant 07dpi,GHu Mutant
+GHu_Mut_07dpi_2,GHu_Mutant_07dpi,2,7,GHu Mutant 07dpi,GHu Mutant
+GHu_Mut_07dpi_3,GHu_Mutant_07dpi,3,7,GHu Mutant 07dpi,GHu Mutant
+GHu_Mut_07dpi_4,GHu_Mutant_07dpi,4,7,GHu Mutant 07dpi,GHu Mutant
+GHu_Mut_07dpi_5,GHu_Mutant_07dpi,5,7,GHu Mutant 07dpi,GHu Mutant
+GHu_Mut_12dpi_1,GHu_Mutant_12dpi,1,12,GHu Mutant 12dpi,GHu Mutant
+GHu_Mut_12dpi_2,GHu_Mutant_12dpi,2,12,GHu Mutant 12dpi,GHu Mutant
+GHu_Mut_12dpi_3,GHu_Mutant_12dpi,3,12,GHu Mutant 12dpi,GHu Mutant
+GHu_Mut_12dpi_4,GHu_Mutant_12dpi,4,12,GHu Mutant 12dpi,GHu Mutant
+GHu_Mut_12dpi_5,GHu_Mutant_12dpi,5,12,GHu Mutant 12dpi,GHu Mutant
+GHu_WT_04dpi_1,GHu_WT_04dpi,1,4,GHu WT 04dpi,GHu WT
+GHu_WT_04dpi_2,GHu_WT_04dpi,2,4,GHu WT 04dpi,GHu WT
+GHu_WT_04dpi_3,GHu_WT_04dpi,3,4,GHu WT 04dpi,GHu WT
+GHu_WT_04dpi_4,GHu_WT_04dpi,4,4,GHu WT 04dpi,GHu WT
+GHu_WT_04dpi_5,GHu_WT_04dpi,5,4,GHu WT 04dpi,GHu WT
+GHu_WT_07dpi_1,GHu_WT_07dpi,1,7,GHu WT 07dpi,GHu WT
+GHu_WT_07dpi_2,GHu_WT_07dpi,2,7,GHu WT 07dpi,GHu WT
+GHu_WT_07dpi_3,GHu_WT_07dpi,3,7,GHu WT 07dpi,GHu WT
+GHu_WT_07dpi_4,GHu_WT_07dpi,4,7,GHu WT 07dpi,GHu WT
+GHu_WT_07dpi_5,GHu_WT_07dpi,5,7,GHu WT 07dpi,GHu WT
+GHu_WT_12dpi_1,GHu_WT_12dpi,1,12,GHu WT 12dpi,GHu WT
+GHu_WT_12dpi_2,GHu_WT_12dpi,2,12,GHu WT 12dpi,GHu WT
+GHu_WT_12dpi_3,GHu_WT_12dpi,3,12,GHu WT 12dpi,GHu WT
+GHu_WT_12dpi_4,GHu_WT_12dpi,4,12,GHu WT 12dpi,GHu WT
+GHu_WT_12dpi_5,GHu_WT_12dpi,5,12,GHu WT 12dpi,GHu WT
