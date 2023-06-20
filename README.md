@@ -1,6 +1,8 @@
 # GFLVproteomics
 The full analysis pipeline of grapevine fanleaf virus infected N. benthamiana proteins. This analysis is part of a larger project investigating the symptomatic development of inter-veinal chlorosis as previously documented (Osterbaan et al. 2019).
 
+The published version of analysis in the Journal of Proteome Research can be found through this link: https://pubs.acs.org/doi/full/10.1021/acs.jproteome.3c00069
+
 
 The required files for running the "Protein Analysis 10.20.22.Rmd" file are listed below:
 
